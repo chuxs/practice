@@ -11,12 +11,18 @@ async function ensureDailySet(dateKey = todayKey()) {
 
   if (questions.length === 0) {
     const generated = await generateDailyQuestions(dateKey);
-    await Question.insertMany(
-      generated.map((q) => ({
-        ...q,
-        dateKey,
-      }))
-    );
+    try {
+      await Question.insertMany(
+        generated.map((q) => ({
+          ...q,
+          dateKey,
+        })),
+        { ordered: false }
+      );
+    } catch (err) {
+      // Ignore duplicate key errors, they mean the questions already exist
+      if (!err.message.includes('E11000')) throw err;
+    }
     questions = await Question.find({ dateKey }).sort({ order: 1 }).lean();
   }
 
