@@ -1,0 +1,64 @@
+<%- include('partials/header') %>
+
+<article
+  class="workspace"
+  id="workspace"
+  data-question-id="<%= question._id %>"
+  data-topic="<%= question.topic %>"
+  data-status="<%= attempt.status %>"
+>
+  <header class="workspace-head">
+    <a class="back-link" href="/day/<%= question.dateKey %>">← Back to <%= question.dateKey %></a>
+    <div class="question-meta">
+      <span class="pill difficulty-<%= question.difficulty %>"><%= question.difficulty %></span>
+      <span class="pill topic"><%= question.topic %></span>
+      <span class="pill status" id="status-pill"><%= attempt.status %></span>
+    </div>
+    <h1 class="workspace-title"><%= question.title %></h1>
+  </header>
+
+  <section class="prompt-panel prompt-panel-wide">
+    <h2 class="panel-label">Prompt</h2>
+    <div class="prompt-body"><%= question.prompt %></div>
+  </section>
+
+  <div class="code-output-grid">
+    <section class="editor-panel">
+      <div class="panel-toolbar">
+        <h2 class="panel-label">Your code</h2>
+        <div class="toolbar-actions">
+          <button type="button" class="btn ghost" id="btn-save">Save</button>
+          <button type="button" class="btn run" id="btn-run">Run</button>
+          <button type="button" class="btn primary" id="btn-test">Test code</button>
+          <button type="button" class="btn ghost" id="btn-solved" <%= attempt.status === 'peeked' ? 'disabled' : '' %>>
+            Mark solved
+          </button>
+          <button type="button" class="btn warning" id="btn-peek">Show answer</button>
+        </div>
+      </div>
+      <textarea id="code-editor" aria-label="Code editor"><%= attempt.code || question.starterCode %></textarea>
+      <p class="hint" id="save-hint" hidden></p>
+      <div class="test-result" id="test-result" hidden>
+        <p class="test-result-badge" id="test-result-badge"></p>
+        <p class="test-result-feedback" id="test-result-feedback"></p>
+      </div>
+    </section>
+
+    <section class="output-panel">
+      <div class="panel-toolbar">
+        <h2 class="panel-label">Output</h2>
+        <button type="button" class="btn ghost" id="btn-clear-output">Clear</button>
+      </div>
+      <pre class="output-box" id="output-box" aria-live="polite">Click Run to see console output or return values here.</pre>
+    </section>
+  </div>
+
+  <section class="answer-panel" id="answer-panel" hidden>
+    <h2 class="panel-label">Official answer</h2>
+    <pre class="answer-code" id="answer-code"></pre>
+    <h3 class="panel-label sub">Explanation</h3>
+    <p class="explanation" id="answer-explanation"></p>
+  </section>
+</article>
+
+<%- include('partials/footer') %>

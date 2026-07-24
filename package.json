@@ -1,0 +1,27 @@
+{
+  "name": "js-node-practice",
+  "version": "1.0.0",
+  "description": "Daily JavaScript, Node.js, and SQL coding practice with Claude-generated questions",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": [
+    "javascript",
+    "nodejs",
+    "sql",
+    "practice",
+    "ejs"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "alasql": "^4.17.3",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.5",
+    "morgan": "^1.10.0"
+  }
+}

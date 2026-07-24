@@ -1,0 +1,60 @@
+<%- include('partials/header') %>
+
+<section class="hero-strip">
+  <div>
+    <p class="eyebrow"><%= dateKey %></p>
+    <h1 class="page-title">Today’s set</h1>
+    <p class="lede">Six questions — two easy, two medium, two hard — across JavaScript, Node.js, and SQL.</p>
+  </div>
+  <div class="stat-cluster" aria-label="Today’s progress">
+    <div class="stat">
+      <span class="stat-value"><%= stats.solved %></span>
+      <span class="stat-label">Solved</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value"><%= stats.peeked %></span>
+      <span class="stat-label">Peeked</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value"><%= stats.unsolved %></span>
+      <span class="stat-label">Open</span>
+    </div>
+  </div>
+</section>
+
+<section class="question-list" aria-label="Daily questions">
+  <% questions.forEach(function (q) { %>
+    <a class="question-row status-<%= q.status %>" href="/question/<%= q._id %>">
+      <div class="question-meta">
+        <span class="pill difficulty-<%= q.difficulty %>"><%= q.difficulty %></span>
+        <span class="pill topic"><%= q.topic %></span>
+        <span class="pill status"><%= q.status %></span>
+      </div>
+      <h2 class="question-title"><%= q.title %></h2>
+      <p class="question-excerpt"><%= q.prompt.slice(0, 140) %><%= q.prompt.length > 140 ? '…' : '' %></p>
+      <span class="row-action">Open →</span>
+    </a>
+  <% }) %>
+</section>
+
+<% if (history && history.length) { %>
+<section class="history-preview">
+  <div class="section-head">
+    <h2>Recent days</h2>
+    <a href="/progress">Full log</a>
+  </div>
+  <div class="history-bars">
+    <% history.slice(0, 7).forEach(function (day) { %>
+      <a class="history-day" href="/day/<%= day.dateKey %>" title="<%= day.dateKey %>">
+        <div class="bar-track">
+          <div class="bar-solved" style="height: <%= day.total ? (day.solved / day.total) * 100 : 0 %>%"></div>
+          <div class="bar-peeked" style="height: <%= day.total ? (day.peeked / day.total) * 100 : 0 %>%"></div>
+        </div>
+        <span class="history-date"><%= day.dateKey.slice(5) %></span>
+      </a>
+    <% }) %>
+  </div>
+</section>
+<% } %>
+
+<%- include('partials/footer') %>

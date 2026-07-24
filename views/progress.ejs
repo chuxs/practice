@@ -1,0 +1,49 @@
+<%- include('partials/header') %>
+
+<section class="hero-strip compact">
+  <div>
+    <p class="eyebrow">Practice log</p>
+    <h1 class="page-title">Progress</h1>
+    <p class="lede">What you solved versus what you peeked — day by day.</p>
+  </div>
+</section>
+
+<% if (!history.length) { %>
+  <p class="empty-state">No sessions yet. Start today’s set and your log will appear here.</p>
+<% } else { %>
+  <div class="progress-table-wrap">
+    <table class="progress-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Solved</th>
+          <th>Peeked</th>
+          <th>Open</th>
+          <th>Total</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% history.forEach(function (day) { %>
+          <tr>
+            <td class="mono"><%= day.dateKey %></td>
+            <td><span class="chip solved"><%= day.solved %></span></td>
+            <td><span class="chip peeked"><%= day.peeked %></span></td>
+            <td><span class="chip open"><%= day.unsolved %></span></td>
+            <td class="mono"><%= day.total %></td>
+            <td><a class="text-link" href="/day/<%= day.dateKey %>">Review</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<section class="danger-zone" aria-label="Danger zone">
+  <h2>Danger zone</h2>
+  <p>Delete every question and progress record in the database. This cannot be undone.</p>
+  <button type="button" class="btn danger" id="btn-wipe">Wipe all data</button>
+  <p class="hint" id="wipe-hint" hidden></p>
+</section>
+
+<%- include('partials/footer') %>

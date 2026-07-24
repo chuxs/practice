@@ -1,0 +1,10 @@
+<%- include('partials/header') %>
+
+<section class="error-block">
+  <p class="eyebrow"><%= status || 500 %></p>
+  <h1 class="page-title">Something broke</h1>
+  <p class="lede"><%= message %></p>
+  <a class="btn primary" href="/">Back to today</a>
+</section>
+
+<%- include('partials/footer') %>
