@@ -32,14 +32,16 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: err.message || 'Something went wrong' });
 });
 
-async function start() {
-  await connectDB();
+// Connect to database once
+connectDB().catch((err) => {
+  console.error('Database connection error:', err.message);
+});
+
+// Only listen locally, not on Vercel
+if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Practice platform running at http://localhost:${PORT}`);
   });
 }
 
-start().catch((err) => {
-  console.error('Failed to start server:', err.message);
-  process.exit(1);
-});
+module.exports = app;
