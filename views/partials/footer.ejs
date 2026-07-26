@@ -1,4 +1,30 @@
 </main>
+
+  <div class="modal-root" id="modal-root" hidden>
+    <div class="modal-backdrop" data-modal-dismiss></div>
+    <div
+      class="modal-dialog"
+      id="modal-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      aria-describedby="modal-message"
+    >
+      <div class="modal-accent" aria-hidden="true"></div>
+      <h2 class="modal-title" id="modal-title"></h2>
+      <p class="modal-message" id="modal-message"></p>
+      <label class="modal-field" id="modal-field" hidden>
+        <span class="modal-field-label" id="modal-field-label"></span>
+        <input class="modal-input" id="modal-input" type="text" autocomplete="off" spellcheck="false" />
+      </label>
+      <p class="modal-error" id="modal-error" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="modal-cancel">Cancel</button>
+        <button type="button" class="btn primary" id="modal-confirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/javascript/javascript.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/sql/sql.min.js"></script>

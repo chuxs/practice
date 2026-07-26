@@ -11,11 +11,56 @@ const SLOT_PLAN = [
   { difficulty: 'easy', topic: 'nodejs' },
   { difficulty: 'medium', topic: 'javascript' },
   { difficulty: 'medium', topic: 'nodejs' },
-  // { difficulty: 'hard', topic: 'javascript' },
-  // { difficulty: 'hard', topic: 'nodejs' },
-  // { difficulty: 'easy', topic: 'sql' },
-  // { difficulty: 'hard', topic: 'sql' },
 ];
+
+const SUBMIT_QUESTIONS_TOOL = {
+  name: 'submit_daily_questions',
+  description: 'Submit exactly 4 daily practice coding questions as structured data.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      questions: {
+        type: 'array',
+        description: 'Exactly 4 questions in slot order',
+        items: {
+          type: 'object',
+          properties: {
+            difficulty: { type: 'string', enum: ['easy', 'medium'] },
+            topic: { type: 'string', enum: ['javascript', 'nodejs'] },
+            title: { type: 'string' },
+            prompt: { type: 'string' },
+            starterCode: { type: 'string' },
+            answer: { type: 'string' },
+            explanation: { type: 'string' },
+          },
+          required: [
+            'difficulty',
+            'topic',
+            'title',
+            'prompt',
+            'starterCode',
+            'answer',
+            'explanation',
+          ],
+        },
+      },
+    },
+    required: ['questions'],
+  },
+};
+
+const GRADE_TOOL = {
+  name: 'grade_submission',
+  description: 'Grade whether a learner submission correctly solves the problem.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      correct: { type: 'boolean' },
+      feedback: { type: 'string' },
+    },
+    required: ['correct', 'feedback'],
+  },
+};
 
 function getClient() {
   if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY.includes('your_anthropic')) {
@@ -31,7 +76,7 @@ function getClient() {
 function buildPrompt(dateKey) {
   return `You are a senior coding instructor writing interview-style drills. Generate exactly 4 practice coding questions for date ${dateKey}.
 
-Slots (in order):
+Call the submit_daily_questions tool with exactly 4 questions in this slot order:
 1. easy / javascript
 2. easy / nodejs
 3. medium / javascript
@@ -39,37 +84,23 @@ Slots (in order):
 
 Make every prompt HIGHLY descriptive. Each prompt MUST include all of these sections (plain text, use newlines):
 1) Goal — one clear sentence of what to build
-2) Requirements — numbered bullet list of exact behaviors / edge cases
+2) Requirements — numbered list of exact behaviors / edge cases
 3) Constraints — what they may/may not use (e.g. no external packages)
-4) Examples — at least 2 worked examples with input AND expected output shown clearly
-5) How to verify — short note telling them what to console.log / call so Run shows useful output
+4) Examples — at least 2 worked examples with input AND expected output
+5) How to verify — what to console.log / call so Run shows useful output
 
 Topic guidance:
-- JavaScript: language fundamentals (arrays, objects, closures, prototypes, this, async/await, promises, ES6+). Pure JS is fine; CommonJS module.exports is allowed.
-- Node.js: core modules and runtime patterns (path, url, events, streams, Buffer, process, timers, HTTP basics without Express). Prefer problems that work with console.log demos. Do NOT require filesystem writes, network servers that must stay open, or packages outside Node core.
+- JavaScript: language fundamentals (arrays, objects, closures, prototypes, this, async/await, promises, ES6+). CommonJS module.exports is allowed.
+- Node.js: core modules/runtime (path, url, events, streams, Buffer, process, timers, HTTP basics without Express). Prefer console.log demos. Do NOT require filesystem writes, long-lived servers, or non-core packages.
 
 Rules:
 - Answerable in one editor (function or short script).
-- Vary concepts; do not repeat the same pattern across the 4 questions.
-- starterCode: incomplete scaffold PLUS 2–4 commented or live demo console.log calls at the bottom so clicking Run produces visible output once the solution is filled in. Include module.exports for the main function when relevant.
-- answer: complete correct solution including the same demo calls so Run prints the example results.
-- explanation: 3–6 sentences teaching the key idea and why the approach works.
-- Titles should be specific (not generic like "Array Challenge").
-
-Return ONLY valid JSON (no markdown fences):
-{
-  "questions": [
-    {
-      "difficulty": "easy|medium",
-      "topic": "javascript|nodejs",
-      "title": "specific title",
-      "prompt": "full multi-section problem statement",
-      "starterCode": "scaffold with demo calls",
-      "answer": "full solution with demo calls",
-      "explanation": "teaching explanation"
-    }
-  ]
-}`;
+- Vary concepts across the 4 questions.
+- starterCode: incomplete scaffold PLUS demo console.log calls at the bottom. Include module.exports when relevant.
+- answer: complete correct solution including the same demo calls.
+- explanation: 3–6 sentences teaching the key idea.
+- Titles should be specific.
+- Keep each code sample reasonably concise so the full payload fits cleanly.`;
 }
 
 function normalizeGenerated(parsed) {
@@ -94,7 +125,7 @@ function normalizeGenerated(parsed) {
     if (!q.prompt || !q.answer || !q.explanation) {
       throw new Error('Claude returned incomplete question fields');
     }
-    if (q.prompt.length < 180) {
+    if (q.prompt.length < 120) {
       throw new Error('Claude returned a prompt that is too short / not descriptive enough');
     }
     return q;
@@ -109,28 +140,67 @@ function extractText(response) {
     .trim();
 }
 
+function extractToolInput(response, toolName) {
+  const block = response.content.find(
+    (item) => item.type === 'tool_use' && item.name === toolName
+  );
+  if (!block || !block.input || typeof block.input !== 'object') {
+    return null;
+  }
+  return block.input;
+}
+
 function parseJsonFromText(text) {
-  let jsonText = text;
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (!text || !String(text).trim()) {
+    throw new Error('Failed to parse Claude JSON response (empty)');
+  }
+
+  let candidate = String(text).trim();
+  const fenceMatch = candidate.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
-    jsonText = fenceMatch[1].trim();
+    candidate = fenceMatch[1].trim();
   }
+
+  const start = candidate.indexOf('{');
+  const end = candidate.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) {
+    candidate = candidate.slice(start, end + 1);
+  }
+
   try {
-    return JSON.parse(jsonText);
-  } catch {
-    throw new Error('Failed to parse Claude JSON response');
+    return JSON.parse(candidate);
+  } catch (err) {
+    const snippet = candidate.slice(0, 180).replace(/\s+/g, ' ');
+    throw new Error(`Failed to parse Claude JSON response: ${err.message}. Snippet: ${snippet}`);
   }
+}
+
+function extractStructuredPayload(response, toolName) {
+  const toolInput = extractToolInput(response, toolName);
+  if (toolInput) return toolInput;
+
+  // Fallback if the model returned plain JSON text instead of tool_use
+  return parseJsonFromText(extractText(response));
 }
 
 async function generateDailyQuestions(dateKey) {
   const client = getClient();
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 10000,
+    max_tokens: 16000,
+    tools: [SUBMIT_QUESTIONS_TOOL],
+    tool_choice: { type: 'tool', name: SUBMIT_QUESTIONS_TOOL.name },
     messages: [{ role: 'user', content: buildPrompt(dateKey) }],
   });
 
-  const parsed = parseJsonFromText(extractText(response));
+  const stopReason = response.stop_reason;
+  if (stopReason === 'max_tokens') {
+    throw new Error(
+      'Claude response was truncated while generating questions. Try again in a moment.'
+    );
+  }
+
+  const parsed = extractStructuredPayload(response, SUBMIT_QUESTIONS_TOOL.name);
   return normalizeGenerated(parsed);
 }
 
@@ -151,7 +221,9 @@ async function gradeSubmission(question, code) {
 
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 1200,
+    max_tokens: 800,
+    tools: [GRADE_TOOL],
+    tool_choice: { type: 'tool', name: GRADE_TOOL.name },
     messages: [
       {
         role: 'user',
@@ -176,19 +248,17 @@ Grade whether the submission correctly solves the problem.
 - Ignore whether they included demo console.log / module.exports unless the prompt requires a specific export shape.
 - For JavaScript/Node: the logic must satisfy the stated requirements and examples.
 
-Return ONLY valid JSON (no markdown fences):
-{
-  "correct": true or false,
-  "feedback": "2-4 sentences. If wrong, say what fails and a nudge toward fixing it without dumping the full answer. If correct, briefly confirm why."
-}`,
+Call grade_submission with your verdict.`,
       },
     ],
   });
 
-  const parsed = parseJsonFromText(extractText(response));
+  const parsed = extractStructuredPayload(response, GRADE_TOOL.name);
   return {
     correct: Boolean(parsed.correct),
-    feedback: String(parsed.feedback || (parsed.correct ? 'Correct.' : 'Not quite — try again.')).trim(),
+    feedback: String(
+      parsed.feedback || (parsed.correct ? 'Correct.' : 'Not quite — try again.')
+    ).trim(),
   };
 }
 

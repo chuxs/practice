@@ -1,6 +1,6 @@
 const Question = require('../models/Question');
 const Progress = require('../models/Progress');
-const { generateDailyQuestions } = require('../services/claude');
+const { generateDailyQuestions, SLOT_PLAN } = require('../services/claude');
 
 function todayKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
@@ -8,6 +8,12 @@ function todayKey(date = new Date()) {
 
 async function ensureDailySet(dateKey = todayKey()) {
   let questions = await Question.find({ dateKey }).sort({ order: 1 }).lean();
+
+  if (questions.length > 0 && questions.length !== SLOT_PLAN.length) {
+    await Question.deleteMany({ dateKey });
+    await Progress.deleteOne({ dateKey });
+    questions = [];
+  }
 
   if (questions.length === 0) {
     const generated = await generateDailyQuestions(dateKey);
@@ -20,8 +26,10 @@ async function ensureDailySet(dateKey = todayKey()) {
         { ordered: false }
       );
     } catch (err) {
-      // Ignore duplicate key errors, they mean the questions already exist
-      if (!err.message.includes('E11000')) throw err;
+      // Concurrent first-load race: another request may have inserted first.
+      if (!(err && String(err.message || '').includes('E11000'))) {
+        throw err;
+      }
     }
     questions = await Question.find({ dateKey }).sort({ order: 1 }).lean();
   }
