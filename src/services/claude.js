@@ -3,16 +3,18 @@ const Anthropic = require('@anthropic-ai/sdk');
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 
 /**
- * Daily set: 2 easy, 2 medium, 2 hard.
- * Topics rotate across javascript, nodejs, and sql.
+ * Daily set: 4 questions — easy/medium × javascript/nodejs.
+ * SQL slots are paused for now.
  */
 const SLOT_PLAN = [
   { difficulty: 'easy', topic: 'javascript' },
-  { difficulty: 'easy', topic: 'sql' },
-  { difficulty: 'medium', topic: 'nodejs' },
+  { difficulty: 'easy', topic: 'nodejs' },
   { difficulty: 'medium', topic: 'javascript' },
-  { difficulty: 'hard', topic: 'nodejs' },
-  { difficulty: 'hard', topic: 'sql' },
+  { difficulty: 'medium', topic: 'nodejs' },
+  // { difficulty: 'hard', topic: 'javascript' },
+  // { difficulty: 'hard', topic: 'nodejs' },
+  // { difficulty: 'easy', topic: 'sql' },
+  // { difficulty: 'hard', topic: 'sql' },
 ];
 
 function getClient() {
@@ -27,36 +29,43 @@ function getClient() {
 }
 
 function buildPrompt(dateKey) {
-  return `You are a senior coding instructor. Generate exactly 6 practice coding questions for date ${dateKey}.
+  return `You are a senior coding instructor writing interview-style drills. Generate exactly 4 practice coding questions for date ${dateKey}.
 
-Requirements for each slot (in order):
+Slots (in order):
 1. easy / javascript
-2. easy / sql
-3. medium / nodejs
-4. medium / javascript
-5. hard / nodejs
-6. hard / sql
+2. easy / nodejs
+3. medium / javascript
+4. medium / nodejs
+
+Make every prompt HIGHLY descriptive. Each prompt MUST include all of these sections (plain text, use newlines):
+1) Goal — one clear sentence of what to build
+2) Requirements — numbered bullet list of exact behaviors / edge cases
+3) Constraints — what they may/may not use (e.g. no external packages)
+4) Examples — at least 2 worked examples with input AND expected output shown clearly
+5) How to verify — short note telling them what to console.log / call so Run shows useful output
+
+Topic guidance:
+- JavaScript: language fundamentals (arrays, objects, closures, prototypes, this, async/await, promises, ES6+). Pure JS is fine; CommonJS module.exports is allowed.
+- Node.js: core modules and runtime patterns (path, url, events, streams, Buffer, process, timers, HTTP basics without Express). Prefer problems that work with console.log demos. Do NOT require filesystem writes, network servers that must stay open, or packages outside Node core.
 
 Rules:
-- Questions must be answerable in a single code editor (write a function, query, or short script).
-- Vary concepts; do not repeat the same pattern.
-- For SQL: use standard SQL (PostgreSQL-flavored is fine). Provide table schemas in the prompt when needed.
-- For Node.js: focus on core APIs, async patterns, streams, modules, HTTP — not frameworks unless essential.
-- For JavaScript: focus on language fundamentals, arrays, objects, closures, async, ES6+.
-- starterCode should be a short scaffold the learner fills in (not empty, not the full answer).
-- answer must be a complete, correct solution.
-- explanation should teach why the solution works (2–5 sentences).
+- Answerable in one editor (function or short script).
+- Vary concepts; do not repeat the same pattern across the 4 questions.
+- starterCode: incomplete scaffold PLUS 2–4 commented or live demo console.log calls at the bottom so clicking Run produces visible output once the solution is filled in. Include module.exports for the main function when relevant.
+- answer: complete correct solution including the same demo calls so Run prints the example results.
+- explanation: 3–6 sentences teaching the key idea and why the approach works.
+- Titles should be specific (not generic like "Array Challenge").
 
-Return ONLY valid JSON (no markdown fences) with this shape:
+Return ONLY valid JSON (no markdown fences):
 {
   "questions": [
     {
-      "difficulty": "easy|medium|hard",
-      "topic": "javascript|nodejs|sql",
-      "title": "short title",
-      "prompt": "full problem statement with examples if useful",
-      "starterCode": "starter code",
-      "answer": "full solution code",
+      "difficulty": "easy|medium",
+      "topic": "javascript|nodejs",
+      "title": "specific title",
+      "prompt": "full multi-section problem statement",
+      "starterCode": "scaffold with demo calls",
+      "answer": "full solution with demo calls",
       "explanation": "teaching explanation"
     }
   ]
@@ -64,8 +73,9 @@ Return ONLY valid JSON (no markdown fences) with this shape:
 }
 
 function normalizeGenerated(parsed) {
-  if (!parsed || !Array.isArray(parsed.questions) || parsed.questions.length !== 6) {
-    throw new Error('Claude returned an unexpected question payload');
+  const expected = SLOT_PLAN.length;
+  if (!parsed || !Array.isArray(parsed.questions) || parsed.questions.length !== expected) {
+    throw new Error(`Claude returned an unexpected question payload (expected ${expected})`);
   }
 
   return SLOT_PLAN.map((slot, index) => {
@@ -83,6 +93,9 @@ function normalizeGenerated(parsed) {
   }).map((q) => {
     if (!q.prompt || !q.answer || !q.explanation) {
       throw new Error('Claude returned incomplete question fields');
+    }
+    if (q.prompt.length < 180) {
+      throw new Error('Claude returned a prompt that is too short / not descriptive enough');
     }
     return q;
   });
@@ -113,7 +126,7 @@ async function generateDailyQuestions(dateKey) {
   const client = getClient();
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 8000,
+    max_tokens: 10000,
     messages: [{ role: 'user', content: buildPrompt(dateKey) }],
   });
 
@@ -160,7 +173,7 @@ ${submission}
 Grade whether the submission correctly solves the problem.
 - Accept equivalent correct solutions (different variable names, style, or valid alternate approaches).
 - Reject incomplete stubs, placeholders, syntax that cannot work, or solutions that miss required behavior.
-- For SQL: accept equivalent queries that produce the same result (column aliases may differ if the prompt allows).
+- Ignore whether they included demo console.log / module.exports unless the prompt requires a specific export shape.
 - For JavaScript/Node: the logic must satisfy the stated requirements and examples.
 
 Return ONLY valid JSON (no markdown fences):

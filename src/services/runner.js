@@ -48,6 +48,7 @@ function createConsole(logs) {
 
 function runJavaScript(code, { allowRequire = false } = {}) {
   const logs = [];
+  const moduleObject = { exports: {} };
   const sandbox = {
     console: createConsole(logs),
     Buffer,
@@ -55,6 +56,11 @@ function runJavaScript(code, { allowRequire = false } = {}) {
     clearTimeout,
     setInterval,
     clearInterval,
+    // Always provide CommonJS globals so module.exports in JS solutions works.
+    module: moduleObject,
+    exports: moduleObject.exports,
+    __dirname: path.join(process.cwd(), 'sandbox'),
+    __filename: path.join(process.cwd(), 'sandbox', 'solution.js'),
   };
 
   if (allowRequire) {
@@ -66,10 +72,6 @@ function runJavaScript(code, { allowRequire = false } = {}) {
       }
       return ALLOWED_MODULES[name];
     };
-    sandbox.module = { exports: {} };
-    sandbox.exports = sandbox.module.exports;
-    sandbox.__dirname = path.join(process.cwd(), 'sandbox');
-    sandbox.__filename = path.join(sandbox.__dirname, 'solution.js');
     sandbox.process = {
       env: {},
       cwd: () => sandbox.__dirname,
@@ -81,6 +83,9 @@ function runJavaScript(code, { allowRequire = false } = {}) {
     const script = new vm.Script(code, { filename: 'solution.js' });
     const context = vm.createContext(sandbox);
     const result = script.runInContext(context, { timeout: 3000 });
+
+    // Keep exports in sync if the script assigned module.exports
+    sandbox.exports = sandbox.module.exports;
 
     const lines = logs.map((entry) => entry.text);
     if (result !== undefined) {
@@ -101,7 +106,9 @@ function runJavaScript(code, { allowRequire = false } = {}) {
   }
 }
 
+/*
 async function runSql(code) {
+  // SQL runner paused while the platform focuses on JavaScript / Node.js.
   let alasql;
   try {
     alasql = require('alasql');
@@ -114,7 +121,6 @@ async function runSql(code) {
   }
 
   try {
-    // Fresh in-memory database per run
     alasql('DROP DATABASE IF EXISTS practice');
     alasql('CREATE DATABASE practice');
     alasql('USE practice');
@@ -149,6 +155,7 @@ async function runSql(code) {
     };
   }
 }
+*/
 
 async function runCode(topic, code) {
   const source = String(code || '').trim();
@@ -157,7 +164,10 @@ async function runCode(topic, code) {
   }
 
   if (topic === 'sql') {
-    return runSql(source);
+    return {
+      ok: false,
+      output: 'SQL practice is paused. This set focuses on JavaScript and Node.js only.',
+    };
   }
 
   return runJavaScript(source, { allowRequire: topic === 'nodejs' });

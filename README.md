@@ -2,7 +2,7 @@
 
 Daily coding practice for **JavaScript**, **Node.js**, and **SQL**.
 
-Each day you get **6 questions** (2 easy, 2 medium, 2 hard). Write solutions in a code editor, mark what you solved, or tap **Show answer** when you need to peek — your progress is logged per day.
+Each day you get **4 questions** (easy + medium for JavaScript and Node.js). Write solutions in a code editor, mark what you solved, or tap **Show answer** when you need to peek — your progress is logged per day.
 
 Questions and detailed answers are generated with the **Anthropic Claude** API. Data lives in **MongoDB**. The UI is **Express + EJS + vanilla JS/CSS**.
 
@@ -60,11 +60,11 @@ Progress pages show solved / peeked / open counts per day.
 | Order | Difficulty | Topic |
 |-------|------------|--------|
 | 1 | easy | javascript |
-| 2 | easy | sql |
-| 3 | medium | nodejs |
-| 4 | medium | javascript |
-| 5 | hard | nodejs |
-| 6 | hard | sql |
+| 2 | easy | nodejs |
+| 3 | medium | javascript |
+| 4 | medium | nodejs |
+
+SQL is paused for now.
 
 ## Project layout
 
